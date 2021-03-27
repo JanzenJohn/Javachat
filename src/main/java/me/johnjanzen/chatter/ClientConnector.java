@@ -1,0 +1,177 @@
+/*
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package me.johnjanzen.chatter;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.math.BigInteger;
+import java.util.ArrayList;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import org.json.JSONObject;
+
+/**
+ *
+ * @author john
+ */
+public class ClientConnector extends Thread{
+    private User user;
+    static volatile ArrayList<ClientConnector> threads;
+    private ArrayList<Message> messages;
+    InputStream in;
+    OutputStream out;
+    
+    public ClientConnector(User user) throws IOException{
+        super();
+        this.user = user;
+        in = user.getSocket().getInputStream();
+        out = user.getSocket().getOutputStream();
+        messages = new ArrayList<>();
+        try{
+        threads.add(this);
+        }
+        catch(NullPointerException e){
+        threads = new ArrayList<>();
+        threads.add(this);
+        }
+        
+    
+    }
+    
+    public int getUserId(){
+        return user.id;
+    }
+    
+    private int sendMessage(Message message){
+        byte[] headerLength;
+        byte[] header;
+        byte[] string = message.getText().getBytes();
+        JSONObject j = new JSONObject();
+        j.put("type", "message");
+        j.put("senderId", message.getSenderId());
+        j.put("recvId", message.getRecvId());
+        j.put("length", string.length);
+        header = j.toString().getBytes();
+        headerLength = BigInteger.valueOf(header.length).toByteArray();
+        if (headerLength.length > 2){
+            return 2;
+        }
+        else if(headerLength.length == 1){
+            byte[] temp = new byte[2];
+            temp[0] = 0;
+            temp[1] = headerLength[0];
+            headerLength = temp;
+        }
+        try{
+            out.write(headerLength);
+            out.write(header);
+            out.write(string);
+            return 0;
+        }
+        catch(IOException e){
+            return 1;
+        }
+        
+    }
+    
+    public void addToQueue(Message message){
+        messages.add(message);
+    }
+    
+    public void run(){
+        
+        
+        while (true){
+            byte[] lenBytes;
+            byte[] headerBytes;
+            byte[] dataBytes;
+            String headerString;
+            boolean m = false;
+            try{
+                
+                lenBytes = in.readNBytes(2);
+                int headerLength = new BigInteger(1, lenBytes).intValue();
+                headerBytes = in.readNBytes(headerLength);
+                headerString = new String(headerBytes);
+                JSONObject header = new JSONObject(headerString);
+                int dataLength = header.getInt("length");
+                dataBytes = in.readNBytes(dataLength);
+                
+                if (header.getString("type").equals("sendall")){
+                    for (ClientConnector c : threads){
+                        c.addToQueue(new Message(user.id, new String(dataBytes), 0));
+                    }
+                }
+                else if (header.getString("type").equals("activeSignal")){
+                    m = true;
+                }
+                
+                
+                
+                
+                
+                
+            }
+            catch(IOException e){
+                try {
+                    in.close();
+                } catch (IOException ex) {
+                    System.err.println("Client Vanished");
+                }
+                try{
+                out.close();
+                } catch (IOException ex) {
+                    System.err.println("Client Vanished");
+                    
+                }
+                break;
+                
+            }
+            
+            for (Message message : messages){
+                sendMessage(message);
+                
+            }
+            while(!messages.isEmpty()){
+                messages.remove(0);
+            }
+            if(m)
+                {   
+                byte[] headerLength;
+                byte[] header;
+                byte[] string = "xd".getBytes();
+                JSONObject j = new JSONObject();
+                j.put("type", "activeSignal");
+                j.put("length", string.length);
+                header = j.toString().getBytes();
+                headerLength = BigInteger.valueOf(header.length).toByteArray();
+                if (headerLength.length > 2){
+
+                }
+                else if(headerLength.length == 1){
+                    byte[] temp = new byte[2];
+                    temp[0] = 0;
+                    temp[1] = headerLength[0];
+                    headerLength = temp;
+                }
+                try{
+                    out.write(headerLength);
+                    out.write(header);
+                    out.write(string);
+
+                }
+                catch(IOException e){
+
+                }
+            
+            System.out.println("Sent activation beacon");
+            }
+            
+        }
+    }
+    
+}
