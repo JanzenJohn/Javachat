@@ -60,6 +60,32 @@ public class ClientConnector extends Thread{
         return user.id;
     }
     
+    private void sendStatus(int code, String message){
+        byte[] headerLength;
+        byte[] header;
+        byte[] data = {0};
+        
+        JSONObject j= new JSONObject();
+        j.put("type", "JSON");
+        j.put("status", code);
+        j.put("message", message);
+        j.put("length", data.length);
+        header = j.toString().getBytes();
+        headerLength = BigInteger.valueOf(header.length).toByteArray();
+        if(headerLength.length == 1){
+            byte[] temp = new byte[2];
+            temp[0] = 0;
+            temp[1] = headerLength[0];
+            headerLength = temp;
+        }
+        
+        try{
+            out.write(headerLength);
+            out.write(header);
+            out.write(data);
+        }
+        catch(IOException e){}
+    }
     private int sendMessage(Message message){
         byte[] headerLength;
         byte[] header;
@@ -125,8 +151,9 @@ public class ClientConnector extends Thread{
                     for (ClientConnector c : threads){
                         c.addToQueue(new Message(user.id, new String(dataBytes), 0));
                     }
+                    sendStatus(200, "OK");
                 }
-                else if (header.getString("type").equals("activeSignal")){
+                else if (header.getString("type").equals("messageRequest")){
                     m = true;
                 }
                 
@@ -152,45 +179,21 @@ public class ClientConnector extends Thread{
                 
             }
             
-            for (Message message : messages){
-                sendMessage(message);
-                
-            }
-            while(!messages.isEmpty()){
-                messages.remove(0);
-            }
+            
+            
             if(m)
                 {   
-                byte[] headerLength;
-                byte[] header;
-                byte[] string = "xd".getBytes();
-                JSONObject j = new JSONObject();
-                j.put("type", "activeSignal");
-                j.put("length", string.length);
-                header = j.toString().getBytes();
-                headerLength = BigInteger.valueOf(header.length).toByteArray();
-                if (headerLength.length > 2){
-
+                    
+                for (Message message : messages){
+                    sendMessage(message);
+                
                 }
-                else if(headerLength.length == 1){
-                    byte[] temp = new byte[2];
-                    temp[0] = 0;
-                    temp[1] = headerLength[0];
-                    headerLength = temp;
+                while(!messages.isEmpty()){
+                    messages.remove(0);
                 }
-                try{
-                    out.write(headerLength);
-                    out.write(header);
-                    out.write(string);
-
-                }
-                catch(IOException e){
-
-                }
+                sendStatus(200, "OK");
             
-            System.out.println("Sent activation beacon");
             }
-            
         }
     }
     

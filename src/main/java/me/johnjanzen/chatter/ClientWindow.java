@@ -6,6 +6,7 @@
 package me.johnjanzen.chatter;
 
 import java.io.IOException;
+import org.json.JSONObject;
 
 /**
  *
@@ -123,11 +124,18 @@ public class ClientWindow extends javax.swing.JFrame {
     private void jButton1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton1ActionPerformed
         var message = new Message(1, jTextField1.getText(), 1);
         this.n.sendMessage(message);
+        JSONObject response = (JSONObject) this.n.recv();
+        int status = response.getInt("status");
+        if(status == 200){
+            return;
+        }
+        System.out.println(response.getString("message"));
+        
     }//GEN-LAST:event_jButton1ActionPerformed
 
     private void jButton2ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton2ActionPerformed
-        n.sendActive();
-        System.out.println("Sent active beacon");
+        n.sendRecvSignal();
+        System.out.println("requested messages");
         Object response =  n.recv();
         System.out.println("Recieved something");
         while (response instanceof Message)
@@ -137,8 +145,9 @@ public class ClientWindow extends javax.swing.JFrame {
             jTextArea1.append(message.getSenderId() + " : " + message.getText() + "\n");
             
             response = (Object) n.recv();
-            System.out.println("MESSAGE OR ACTIVE BEACON");
+
         }
+        System.out.println("over");
     }//GEN-LAST:event_jButton2ActionPerformed
 
     /**

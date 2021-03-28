@@ -91,6 +91,9 @@ public class ClientNetwork {
                     return 2;
                 }
             }
+            else if(type.equals("JSON")){
+                return header;
+            }
             else{
                 return 2;
             }
@@ -111,12 +114,12 @@ public class ClientNetwork {
         return in.readNBytes(amount);
     }
     
-    public int sendActive(){
+    public int sendRecvSignal(){
         byte[] headerLength;
         byte[] header;
         byte[] string = ".".getBytes();
         JSONObject j = new JSONObject();
-        j.put("type", "activeSignal");
+        j.put("type", "messageRequest");
         j.put("length", string.length);
         header = j.toString().getBytes();
         headerLength = BigInteger.valueOf(header.length).toByteArray();
