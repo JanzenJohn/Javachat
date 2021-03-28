@@ -55,6 +55,7 @@ public class ClientWindow extends javax.swing.JFrame {
             }
         });
 
+        jTextArea1.setEditable(false);
         jTextArea1.setColumns(20);
         jTextArea1.setRows(5);
         jScrollPane1.setViewportView(jTextArea1);
@@ -133,8 +134,8 @@ public class ClientWindow extends javax.swing.JFrame {
         {
             System.out.println("MESSAGE RECV");
             Message message = (Message) response;
-            jTextArea1.append(message.getText() + "\n");
-            ;
+            jTextArea1.append(message.getSenderId() + " : " + message.getText() + "\n");
+            
             response = (Object) n.recv();
             System.out.println("MESSAGE OR ACTIVE BEACON");
         }

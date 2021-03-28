@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.math.BigInteger;
+import java.net.Socket;
 import java.util.ArrayList;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -25,9 +26,10 @@ public class ClientConnector extends Thread{
     InputStream in;
     OutputStream out;
     
-    public ClientConnector(User user) throws IOException{
+    public ClientConnector(Socket s) throws IOException{
         super();
-        this.user = user;
+        
+        user = new User(1, s);
         in = user.getSocket().getInputStream();
         out = user.getSocket().getOutputStream();
         messages = new ArrayList<>();
@@ -38,6 +40,18 @@ public class ClientConnector extends Thread{
         threads = new ArrayList<>();
         threads.add(this);
         }
+        
+        while(true){
+            int amount = 0;
+            for (ClientConnector c: threads){
+                if(c.getUserId() == user.id)amount++;
+            }
+            if(amount == 1)break;
+            
+            user.id = (int) ((Math.random() * (99999 - 1)) + 1);
+        }
+        
+        
         
     
     }
@@ -83,7 +97,13 @@ public class ClientConnector extends Thread{
     }
     
     public void run(){
-        
+        Object[] cs = threads.toArray();
+        for (Object c : cs){
+            ClientConnector x = (ClientConnector) c;
+            if(!x.isAlive()){
+                threads.remove(x);
+            }
+        }
         
         while (true){
             byte[] lenBytes;

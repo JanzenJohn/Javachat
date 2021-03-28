@@ -39,8 +39,8 @@ public class Server{
         while (true){
             try{
             Socket clientSock = s.accept();
-            User curUser = new User(0, clientSock);
-            ClientConnector thread = new ClientConnector(curUser);
+            
+            ClientConnector thread = new ClientConnector(clientSock);
             threads.add(thread);
             thread.start();
             System.out.print("IP CONNECTED");
