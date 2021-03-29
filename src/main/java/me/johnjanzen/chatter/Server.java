@@ -35,16 +35,38 @@ public class Server{
             System.exit(1);
         }
         
-        ArrayList<ClientConnector> threads= new ArrayList<ClientConnector>();
+        ArrayList<ClientConnector> threads= new ArrayList<>();
+        ArrayList<PreConnector> waiting = new ArrayList<>();
+        // I know this way of making ID's is stupid but I want to test first
+        int preId = 1;
         while (true){
             try{
             Socket clientSock = s.accept();
+            byte[] idBytes = clientSock.getInputStream().readNBytes(2);
+            if (idBytes[0] == 0 && idBytes[1] == 0){
+                PreConnector current = new PreConnector(clientSock, 1);
+                waiting.add(current);
+                clientSock.getOutputStream().write(new byte[]{0, (byte) preId});
+                System.out.print("IP CONNECTED");
+                System.out.println(clientSock.getInetAddress());
+            }
+            else{
+                PreConnector toDelete = null;
+                for(PreConnector cur: waiting){
+                    if (cur.id == new BigInteger(1, idBytes).intValue()){
+                        ClientConnector thread = new ClientConnector(cur.socket, clientSock);
+                        threads.add(thread);
+                        thread.start();
+                        toDelete = cur;
+                        System.out.println("ClientConnector Ready");
+                    }
+                }
+                if (toDelete != null){
+                    waiting.remove(toDelete);
+                    System.out.println("Removed from Waiting list");
+                }
+            }
             
-            ClientConnector thread = new ClientConnector(clientSock);
-            threads.add(thread);
-            thread.start();
-            System.out.print("IP CONNECTED");
-            System.out.println(clientSock.getInetAddress());
             }
             catch (IOException e){
                 e.printStackTrace();

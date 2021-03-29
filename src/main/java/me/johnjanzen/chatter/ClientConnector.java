@@ -13,6 +13,7 @@ import java.net.Socket;
 import java.util.ArrayList;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import org.json.JSONException;
 import org.json.JSONObject;
 
 /**
@@ -25,11 +26,12 @@ public class ClientConnector extends Thread{
     private ArrayList<Message> messages;
     InputStream in;
     OutputStream out;
+    OutputStream messageStream;
     
-    public ClientConnector(Socket s) throws IOException{
+    public ClientConnector(Socket normalSocket ,Socket second) throws IOException{
         super();
-        
-        user = new User(1, s);
+        this.messageStream = second.getOutputStream();
+        user = new User(1, normalSocket);
         in = user.getSocket().getInputStream();
         out = user.getSocket().getOutputStream();
         messages = new ArrayList<>();
@@ -51,6 +53,9 @@ public class ClientConnector extends Thread{
             user.id = (int) ((Math.random() * (99999 - 1)) + 1);
         }
         
+        for (ClientConnector Cc : threads){
+            Cc.addToQueue(new Message(0,user.id + " has Joined",0));
+        }
         
         
     
@@ -120,6 +125,10 @@ public class ClientConnector extends Thread{
     
     public void addToQueue(Message message){
         messages.add(message);
+        try{
+        messageStream.write(0);
+        }
+        catch(IOException e){}
     }
     
     public void run(){
@@ -137,21 +146,26 @@ public class ClientConnector extends Thread{
             byte[] dataBytes;
             String headerString;
             boolean m = false;
+            
             try{
-                
+                System.out.println("trying to recieve");
                 lenBytes = in.readNBytes(2);
                 int headerLength = new BigInteger(1, lenBytes).intValue();
+                System.out.println("recieving initiated");
                 headerBytes = in.readNBytes(headerLength);
                 headerString = new String(headerBytes);
                 JSONObject header = new JSONObject(headerString);
                 int dataLength = header.getInt("length");
                 dataBytes = in.readNBytes(dataLength);
+                System.out.println("recieving done");
                 
                 if (header.getString("type").equals("sendall")){
+                    sendStatus(200, "OK");
                     for (ClientConnector c : threads){
                         c.addToQueue(new Message(user.id, new String(dataBytes), 0));
                     }
-                    sendStatus(200, "OK");
+                    
+                    
                 }
                 else if (header.getString("type").equals("messageRequest")){
                     m = true;
@@ -177,6 +191,14 @@ public class ClientConnector extends Thread{
                 }
                 break;
                 
+            }
+            catch (JSONException e){
+                for(ClientConnector Cc : threads){
+                    Cc.addToQueue(new Message(0,user.id + " left",0));
+                }
+                
+                sendStatus(400, "Bad request");
+                return;
             }
             
             
